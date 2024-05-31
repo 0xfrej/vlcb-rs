@@ -1,0 +1,23 @@
+[package]
+name = "vlcb-persistence"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.79"
+authors = ["Freja <me@freja.codes>"]
+description = "Persistence layer for the VLCB SDK"
+documentation = "https://docs.rs/vlcb-persistence/"
+homepage = "https://github.com/0xfrej/vlcb-rs"
+repository = "https://github.com/0xfrej/vlcb-rs.git"
+readme = "README.md"
+keywords = ["lcb", "cbus", "vlcb", "merg", "network"]
+categories = ["no-std", "embedded", "network-programming"]
+license = "Apache-2"
+
+[dependencies]
+vlcb-defs = { path = "../../vendor/VLCB-defs/rust" }
+vlcb-core = { path = "../core" }
+heapless = "0.8.0"
+rclite = { version = "0.2.4" }
+bitflags = "2.5.0"
+embedded-storage = "0.3.1"
+delegate = "0.12.0"

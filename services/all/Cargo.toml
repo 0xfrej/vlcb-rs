@@ -1,0 +1,18 @@
+[package]
+name = "vlcb-svc-all"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.79"
+authors = ["Freja <me@freja.codes>"]
+description = "VLCB minimum node specification service."
+documentation = "https://docs.rs/vlcb-rs/"
+homepage = "https://github.com/0xfrej/vlcb-rs"
+repository = "https://github.com/0xfrej/vlcb-rs.git"
+readme = "README.md"
+keywords = ["lcb", "cbus", "vlcb", "merg", "network"]
+categories = ["no-std", "embedded", "network-programming"]
+license = "GPL-3"
+autoexamples = false
+
+[dependencies]
+vlcb-svc-mns = { path = "../mns" }

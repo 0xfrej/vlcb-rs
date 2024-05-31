@@ -1,0 +1,41 @@
+[package]
+name = "vlcb-module"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.79"
+authors = ["Freja <me@freja.codes>"]
+description = "A VLCB module ties all other VLCB libraries and acts as a delegator. Implements default behavior"
+documentation = "https://docs.rs/vlcb-rs/"
+homepage = "https://github.com/0xfrej/vlcb-rs"
+repository = "https://github.com/0xfrej/vlcb-rs.git"
+readme = "README.md"
+keywords = ["lcb", "cbus", "vlcb", "merg", "network"]
+categories = ["no-std", "embedded", "network-programming"]
+license = "GPL-3"
+
+[dependencies]
+vlcb-macros = { path = "../macros" }
+vlcb-core = { path = "../core" }
+vlcb-ui = { path = "../ui" }
+vlcb-network = { path = "../network" }
+vlcb-defs = { path = "../../vendor/VLCB-defs/rust" }
+vlcb-persistence = { path = "../persistence" }
+vlcb-svc-all = { path = "../../services/all" }
+managed = { version = "0.8", default-features = false, features = ["map"] }
+embedded-hal = "1.0.0-rc.1"
+embedded-time = "0.12.1"
+nb = "1.1.0"
+cfg-if = "1.0.0"
+defmt = { version = "0.3", optional = true }
+heapless = "0.8.0"
+rclite = { version = "0.2.4" }
+embedded-simple-ui = "1.0.1"
+
+[dev-dependencies]
+vlcb-module-macros = { path = "../module-macros" }
+embedded-storage-inmemory = "0.1.1"
+
+[features]
+defmt = ["dep:defmt"]
+
+alloc = ["vlcb-network/alloc"]

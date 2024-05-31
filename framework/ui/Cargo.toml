@@ -1,0 +1,25 @@
+[package]
+name = "vlcb-ui"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.79"
+authors = ["Freja <me@freja.codes>"]
+description = "A VLCB UI"
+documentation = "https://docs.rs/vlcb-rs/"
+homepage = "https://github.com/0xfrej/vlcb-rs"
+repository = "https://github.com/0xfrej/vlcb-rs.git"
+readme = "README.md"
+keywords = ["lcb", "cbus", "vlcb", "merg", "network"]
+categories = ["no-std", "embedded", "network-programming"]
+license = "GPL-3"
+autoexamples = false
+
+[dependencies]
+vlcb-defs = { path = "../../vendor/VLCB-defs/rust" }
+vlcb-core = { path = "../core" }
+embedded-hal = "1.0.0-rc.1"
+embedded-time = "0.12.1"
+embedded-simple-ui = "1.0.0"
+
+
+[features]

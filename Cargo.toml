@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [
+  "framework/macros",
+  "framework/core",
+  "framework/ui",
+  "framework/persistence",
+  "framework/network",
+  "framework/module",
+  "framework/module-macros",
+
+  "services/all",
+  "services/mns",
+]

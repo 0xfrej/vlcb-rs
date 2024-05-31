@@ -1,0 +1,28 @@
+[package]
+name = "vlcb-core"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.79"
+authors = ["Freja <me@freja.codes>"]
+description = "A VLCB core library for sharing code."
+documentation = "https://docs.rs/vlcb-rs/"
+homepage = "https://github.com/0xfrej/vlcb-rs"
+repository = "https://github.com/0xfrej/vlcb-rs.git"
+readme = "README.md"
+keywords = ["lcb", "cbus", "vlcb", "merg", "network"]
+categories = ["no-std", "embedded", "network-programming"]
+license = "GPL-3"
+autoexamples = false
+
+[dependencies]
+vlcb-defs = { path = "../../vendor/VLCB-defs/rust" }
+byteorder = { version = "1.0", default-features = false }
+defmt = { version = "0.3", optional = true }
+num-traits = { version = "0.2.17", default-features = false, features = [] }
+num_enum = { version = "0.7.0", default-features = false }
+heapless = "0.8.0"
+bitflags = "2.5.0"
+
+[features]
+
+defmt = ["dep:defmt"]

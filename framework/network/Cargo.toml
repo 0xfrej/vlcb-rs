@@ -1,0 +1,54 @@
+[package]
+name = "vlcb-network"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.79"
+authors = ["Freja <me@freja.codes>"]
+description = "A VLCB network stack designed for bare-metal, real-time systems without a heap."
+documentation = "https://docs.rs/vlcb-rs/"
+homepage = "https://github.com/0xfrej/vlcb-rs"
+repository = "https://github.com/0xfrej/vlcb-rs.git"
+readme = "README.md"
+keywords = ["lcb", "cbus", "vlcb", "merg", "network"]
+categories = ["no-std", "embedded", "network-programming"]
+license = "GPL-3"
+autoexamples = false
+
+#todo: optimize dependencies
+[dependencies]
+vlcb-defs = { path = "../../vendor/VLCB-defs/rust" }
+vlcb-core = { path = "../core" }
+num-traits = { version = "0.2.17", default-features = false, features = [] }
+num_enum = { version = "0.7.0", default-features = false }
+zerocopy = { version = "0.7.3", features = ["derive"] }
+heapless = "0.8.0"
+embedded-hal = "1.0.0-rc.1"
+embedded-can = { version = "0.4.1", optional = true }
+embedded-time = "0.12.1"
+nb = "1.1.0"
+cfg-if = "1.0.0"
+managed = { version = "0.8", default-features = false, features = ["map"] }
+byteorder = { version = "1.0", default-features = false }
+defmt = { version = "0.3", optional = true }
+bitbybit = "1.2.2"
+rclite = { version = "0.2.4" }
+arbitrary-int = "1.2.6"
+
+[features]
+log = []
+alloc = ["managed/alloc", "defmt?/alloc"]
+defmt = ["dep:defmt", "heapless/defmt-03", "vlcb-defs/defmt", "vlcb-core/defmt"]
+
+medium-can = ["dep:embedded-can"]
+
+phy-embedded_can = ["dep:embedded-can"]
+
+socket-module = []
+# socket-longmsg = []
+
+default = [
+    "defmt",
+    "medium-can",
+    "phy-embedded_can",
+    "socket-module",
+]
