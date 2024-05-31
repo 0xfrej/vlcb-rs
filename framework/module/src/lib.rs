@@ -8,7 +8,7 @@ use vlcb_persistence::PersistentStorage;
 use embedded_time::{Clock, Instant};
 
 use vlcb_defs::{
-    CbusArmProcessors, CbusBusTypes, CbusManufacturer, CbusMergModuleTypes, CbusMicrochipProcessors, CbusParams, CbusProcessorManufacturers
+    ArmProcessor, BusType, Manufacturer, MergModuleType, MicrochipProcessor, ModuleParams as ModuleParam, ProcessorManufacturer
 };
 use vlcb_network::iface::{Interface, SocketSet};
 use vlcb_network::phy::{Device};
@@ -45,8 +45,8 @@ pub type CpuIdResolver = fn() -> CpuId;
 // }
 
 pub enum Processor {
-    Arm(CbusArmProcessors),
-    Microchip(CbusMicrochipProcessors),
+    Arm(ArmProcessor),
+    Microchip(MicrochipProcessor),
     Atmel,
 }
 
@@ -54,35 +54,35 @@ impl Processor {
     fn emit(self, params: &mut ModuleParams) {
         match self {
             Self::Arm(id) => {
-                params.set_param(CbusParams::CPUID, id as u8);
-                params.set_param(CbusParams::CPUMAN, CbusProcessorManufacturers::ARM as u8)
+                params.set_param(ModuleParam::CpuId, id as u8);
+                params.set_param(ModuleParam::CpuManufacturer, ProcessorManufacturer::Arm as u8)
             }
             Self::Microchip(id) => {
-                params.set_param(CbusParams::CPUID, id as u8);
+                params.set_param(ModuleParam::CpuId, id as u8);
                 params.set_param(
-                    CbusParams::CPUMAN,
-                    CbusProcessorManufacturers::MICROCHIP as u8,
+                    ModuleParam::CpuManufacturer,
+                    ProcessorManufacturer::Microchip as u8,
                 )
             }
             Self::Atmel => {
-                params.set_param(CbusParams::CPUID, 50);
-                params.set_param(CbusParams::CPUMAN, CbusProcessorManufacturers::ATMEL as u8)
+                params.set_param(ModuleParam::CpuId, 50);
+                params.set_param(ModuleParam::CpuManufacturer, ProcessorManufacturer::Atmel as u8)
             }
         };
     }
 }
 
-impl From<Processor> for CbusProcessorManufacturers {
+impl From<Processor> for ProcessorManufacturer {
     fn from(value: Processor) -> Self {
         match value {
-            Processor::Arm(_) => CbusProcessorManufacturers::ARM,
-            Processor::Microchip(_) => CbusProcessorManufacturers::MICROCHIP,
-            Processor::Atmel => CbusProcessorManufacturers::ATMEL,
+            Processor::Arm(_) => ProcessorManufacturer::Arm,
+            Processor::Microchip(_) => ProcessorManufacturer::Microchip,
+            Processor::Atmel => ProcessorManufacturer::Atmel,
         }
     }
 }
 
-impl TryFrom<Processor> for CbusArmProcessors {
+impl TryFrom<Processor> for ArmProcessor {
     type Error = ();
 
     fn try_from(value: Processor) -> Result<Self, Self::Error> {
@@ -93,7 +93,7 @@ impl TryFrom<Processor> for CbusArmProcessors {
     }
 }
 
-impl TryFrom<Processor> for CbusMicrochipProcessors {
+impl TryFrom<Processor> for MicrochipProcessor {
     type Error = ();
 
     fn try_from(value: Processor) -> Result<Self, Self::Error> {
@@ -121,9 +121,9 @@ impl ModuleVersion {
     }
 
     fn emit(self, params: &mut ModuleParams) {
-        params.set_param(CbusParams::MAJVER, self.major);
-        params.set_param(CbusParams::MINVER, self.minor as u8);
-        params.set_param(CbusParams::BETA, self.beta);
+        params.set_param(ModuleParam::MajorVersion, self.major);
+        params.set_param(ModuleParam::MinorVersion, self.minor as u8);
+        params.set_param(ModuleParam::BetaVersion, self.beta);
     }
 }
 
@@ -144,19 +144,19 @@ impl ModuleParams {
                     *v as u8
                 })
                 .collect();
-            params.0[(CbusParams::CPUMID as usize)..4].copy_from_slice(name.as_slice());
+            params.0[(ModuleParam::CpuManufacturerId as usize)..4].copy_from_slice(name.as_slice());
         } else {
-            params.0[(CbusParams::CPUMID as usize)..4].copy_from_slice([b'?'; 4].as_slice());
+            params.0[(ModuleParam::CpuManufacturerId as usize)..4].copy_from_slice([b'?'; 4].as_slice());
         }
 
         params
     }
 
-    pub(crate) fn get_param(&self, param: CbusParams) -> u8 {
+    pub(crate) fn get_param(&self, param: ModuleParam) -> u8 {
         self.0[(param as usize) - 1]
     }
 
-    pub(crate) fn set_param(&mut self, param: CbusParams, value: u8) {
+    pub(crate) fn set_param(&mut self, param: ModuleParam, value: u8) {
         self.0[(param as usize) - 1] = value
     }
 }
@@ -181,7 +181,7 @@ impl<UI: VlcbUi<C>, C: Clock, S: NodeConfig + PersistentStorage>
     pub fn new(
         name: &'static str,
         version: ModuleVersion,
-        manufacturer: CbusManufacturer,
+        manufacturer: Manufacturer,
         flags: u8,
         ui: UI,
         config: S,
@@ -192,20 +192,20 @@ impl<UI: VlcbUi<C>, C: Clock, S: NodeConfig + PersistentStorage>
     ) -> Self {
         let mut params = ModuleParams::new(cpu, cpu_id_resolver);
 
-        params.set_param(CbusParams::MTYP, CbusMergModuleTypes::VLCB.into());
-        params.set_param(CbusParams::FLAGS, flags);
+        params.set_param(ModuleParam::ModuleType, MergModuleType::VLCB.into());
+        params.set_param(ModuleParam::NodeFlags, flags);
 
         version.emit(&mut params);
 
-        params.set_param(CbusParams::MANU, manufacturer.into());
+        params.set_param(ModuleParam::ModuleManufacturer, manufacturer.into());
         params.set_param(
-            CbusParams::BUSTYPE,
-            CbusBusTypes::from(interface.device_caps().medium).into(),
+            ModuleParam::BusType,
+            BusType::from(interface.device_caps().medium).into(),
         );
 
-        params.set_param(CbusParams::EVTNUM, S::MAX_EVENTS);
-        params.set_param(CbusParams::EVNUM, S::EVENT_VAR_COUNT);
-        params.set_param(CbusParams::NVNUM, S::NODE_VAR_COUNT);
+        params.set_param(ModuleParam::MaxEventCount, S::MAX_EVENTS);
+        params.set_param(ModuleParam::EventVariableCount, S::EVENT_VAR_COUNT);
+        params.set_param(ModuleParam::NodeVariableCount, S::NODE_VAR_COUNT);
 
         Self {
             name,

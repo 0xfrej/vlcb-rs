@@ -1,4 +1,4 @@
-use vlcb_defs::CbusBusTypes;
+use vlcb_defs::BusType;
 use cfg_if::cfg_if;
 
 #[cfg(feature = "medium-can")]
@@ -40,7 +40,7 @@ impl Default for Medium {
     }
 }
 
-impl From<Medium> for CbusBusTypes {
+impl From<Medium> for BusType {
     fn from(value: Medium) -> Self {
         match value {
             Medium::CAN => Self::CAN,

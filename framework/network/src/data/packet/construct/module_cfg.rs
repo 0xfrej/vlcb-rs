@@ -1,14 +1,23 @@
 pub mod command {
-    use vlcb_core::{can::VlcbCanId, cbus::VlcbNodeNumber};
-    use vlcb_defs::{CbusOpCodes, CbusCmdErrs};
+    use vlcb_core::{can::VlcbCanId, vlcb::VlcbNodeNumber};
+    use vlcb_defs::{OpCode, CommandError};
     use zerocopy::{ByteOrder, NetworkEndian};
     use super::super::{construct, PacketPayload};
 
     /// System reset
     ///
     /// Commonly broadcasted to all nodes to indicate a full system reset.
-    pub fn system_reset() -> PacketPayload {
-        construct::no_data(CbusOpCodes::ARST)
+    pub fn restart_all_nodes() -> PacketPayload {
+        construct::no_data(OpCode::RestartAllNodes)
+    }
+
+    /// Reset node (as in restart)
+    ///
+    /// Causes module to carry out a software reset to restart the firmware.
+    /// No settings are affected.
+    pub fn restart(node_num: VlcbNodeNumber) -> PacketPayload {
+        let bytes = node_num.as_bytes();
+        construct::two_bytes(OpCode::RestartNode, bytes[0], bytes[1])
     }
 
     /// Set Node Number
@@ -16,7 +25,7 @@ pub mod command {
     /// Commonly broadcasted to all nodes to indicate a full system reset.
     pub fn set_node_number(node_num: VlcbNodeNumber) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::SNN, bytes[0], bytes[1])
+        construct::two_bytes(OpCode::SetNodeNumber, bytes[0], bytes[1])
     }
 
     /// Reset to manufacturer's defaults
@@ -28,7 +37,7 @@ pub mod command {
     /// defined (if any) and all Nvs returned to their default values.
     pub fn reset_to_factory(node_num: VlcbNodeNumber) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::NNRSM, bytes[0], bytes[1])
+        construct::two_bytes(OpCode::ResetModuleToFactory, bytes[0], bytes[1])
     }
 
     /// Request Node number in setup mode
@@ -45,24 +54,7 @@ pub mod command {
                 bytes.copy_from_slice(nn.as_bytes());
             }
 
-            construct::two_bytes(CbusOpCodes::RQNN, bytes[0], bytes[1])
-    }
-
-    /// Node number release
-    ///
-    /// Sent by node when taken out of service. e.g. when reverting to SLiM mode.
-    pub fn release_node_number(node_num: VlcbNodeNumber) -> PacketPayload {
-        let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::NNREL, bytes[0], bytes[1])
-    }
-
-    /// Node number acknowledge
-    ///
-    /// Sent by a node to verify its presence and confirm its node id. This message is sent to
-    /// acknowledge an [`CbusOpCodes::SNN`].
-    pub fn ack_node_number(node_num: VlcbNodeNumber) -> PacketPayload {
-        let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::NNACK, bytes[0], bytes[1])
+            construct::two_bytes(OpCode::RequestNewNodeNumber, bytes[0], bytes[1])
     }
 
     /// Put node into learn mode
@@ -71,7 +63,7 @@ pub mod command {
     /// operation.
     pub fn start_learn_mode(node_num: VlcbNodeNumber) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::NNLRN, bytes[0], bytes[1])
+        construct::two_bytes(OpCode::PutNodeIntoLearnMode, bytes[0], bytes[1])
     }
 
     /// Release node from learn mode
@@ -80,16 +72,7 @@ pub mod command {
     /// operation.
     pub fn end_learn_mode(node_num: VlcbNodeNumber) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::NNULN, bytes[0], bytes[1])
-    }
-
-    /// Clear all events
-    ///
-    /// Sent by a configuration tool to clear all events from a specific node. Must be in
-    /// learn mode first to safeguard against accidental erasure of all events.
-    pub fn clear_event_store(node_num: VlcbNodeNumber) -> PacketPayload {
-        let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::NNCLR, bytes[0], bytes[1])
+        construct::two_bytes(OpCode::ReleaseNodeFromLearnMode, bytes[0], bytes[1])
     }
 
     /// Put node into boot mode
@@ -99,27 +82,18 @@ pub mod command {
     /// node. Sent by a configuration tool to prepare for loading a new program.
     pub fn reboot_into_bootloader(node_num: VlcbNodeNumber) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::BOOT, bytes[0], bytes[1])
+        construct::two_bytes(OpCode::RebootIntoBootloader, bytes[0], bytes[1])
     }
 
     /// Force can_id self enumeration
     ///
     /// For nodes in FLiM using CAN as transport.. This OPC will force a self-enumeration cycle
-    /// for the specified node. A new CAN_ID will be allocated if needed. Following the [`CbusOpCodes::ENUM`]
-    /// sequence, the node should issue a [`CbusOpCodes::NNACK`] to confirm completion and verify the new
-    /// CAN_ID. If no CAN_ID values are available, an error message [`CbusCmdErrs::INVALID_EVENT`] will be issued instead.
+    /// for the specified node. A new CAN_ID will be allocated if needed. Following the [`OpCode::ENUM`]
+    /// sequence, the node should issue a [`OpCode::NNACK`] to confirm completion and verify the new
+    /// CAN_ID. If no CAN_ID values are available, an error message [`CommandError::INVALID_EVENT`] will be issued instead.
     pub fn force_can_enumeration(node_num: VlcbNodeNumber) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::ENUM, bytes[0], bytes[1])
-    }
-
-    /// Reset node (as in restart)
-    ///
-    /// Causes module to carry out a software reset to restart the firmware.
-    /// No settings are affected.
-    pub fn restart(node_num: VlcbNodeNumber) -> PacketPayload {
-        let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::NNRST, bytes[0], bytes[1])
+        construct::two_bytes(OpCode::ForceCanEnumeration, bytes[0], bytes[1])
     }
 
     /// Set a CAN_ID in existing FLiM node
@@ -129,7 +103,7 @@ pub mod command {
     /// the permitted range will produce an error 7 message.and the CAN_ID will not change.
     pub fn set_can_id(node_num: VlcbNodeNumber, can_id: VlcbCanId) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::three_bytes(CbusOpCodes::CANID, bytes[0], bytes[1], can_id.into())
+        construct::three_bytes(OpCode::SetNodeCanId, bytes[0], bytes[1], can_id.into())
     }
 
     pub fn set_node_var(node_num: VlcbNodeNumber, nv_index: u8, value: u8) -> PacketPayload {
@@ -145,8 +119,8 @@ pub mod command {
 }
 
 pub mod query {
-    use vlcb_core::cbus::VlcbNodeNumber;
-    use vlcb_defs::CbusOpCodes;
+    use vlcb_core::vlcb::VlcbNodeNumber;
+    use vlcb_defs::OpCode;
     use zerocopy::{ByteOrder, NetworkEndian};
     use super::super::{construct, PacketPayload};
 
@@ -154,8 +128,8 @@ pub mod query {
     ///
     /// Sent by a node to elicit a PNN reply from each node on the bus that has a node number.
     /// See OpCode 0xB6
-    pub fn node_number() -> PacketPayload {
-        construct::no_data(CbusOpCodes::QNN)
+    pub fn node_info() -> PacketPayload {
+        construct::no_data(OpCode::QueryNodeInfo)
     }
 
     /// Request node parameters
@@ -163,116 +137,81 @@ pub mod query {
     /// Sent to a node while in ‘setup’ mode to read its parameter set. Used
     /// when initially configuring a node. See section 7.2.3 of the CBUS Developer's guide.
     pub fn node_parameters() -> PacketPayload {
-        construct::no_data(CbusOpCodes::RQNP)
+        construct::no_data(OpCode::QueryNodeParameters)
     }
 
     /// Request module type name
     ///
     /// Sent by a node to request the name of the type of module that is in setup mode. The
     /// module in setup mode will reply with opcode NAME. See OpCode 0xE2
-    pub fn module_type_name() -> PacketPayload {
-        construct::no_data(CbusOpCodes::RQMN)
-    }
-
-    /// Read available event slots
-    ///
-    /// Sent by a configuration tool to read the number of available event slots in a node.
-    /// Response is [`CbusOpCodes::EVLNF`] (0x70)
-    pub fn available_event_slots(node_num: VlcbNodeNumber) -> PacketPayload {
-        let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::NNEVN, bytes[0], bytes[1])
-    }
-
-    /// Read all stored events
-    ///
-    /// Sent by a configuration tool to read all the stored events in a node. Response is [`CbusOpCodes::ENRSP`].
-    pub fn read_all_events(node_num: VlcbNodeNumber) -> PacketPayload {
-        let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::NERD, bytes[0], bytes[1])
-    }
-
-    /// Read number of stored events
-    ///
-    /// Sent by a configuration tool to read the number of stored events in a node.
-    /// Response is 0x74([`CbusOpCodes::NUMEV`]).
-    pub fn saved_events_amount(node_num: VlcbNodeNumber) -> PacketPayload {
-        let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::RQEVN, bytes[0], bytes[1])
+    pub fn module_name() -> PacketPayload {
+        construct::no_data(OpCode::QueryModuleName)
     }
 
     /// Request node data event
     ///
     /// Sent by one node to read the data event from another node.(eg: RFID data).
-    /// Response is 0xF7 ([`CbusOpCodes::ARDAT`]).
+    /// Response is 0xF7 ([`OpCode::ARDAT`]).
     pub fn node_data(node_num: VlcbNodeNumber) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::RQDAT, bytes[0], bytes[1])
+        construct::two_bytes(OpCode::QueryNodeData, bytes[0], bytes[1])
     }
 
     /// Request short data frame
     ///
     /// To request a ‘data set’ from a device using the short event method.
-    /// Response is 0xFB ([`CbusOpCodes::DDRS`])
+    /// Response is 0xFB ([`OpCode::DDRS`])
     pub fn device_data(device_number: u16) -> PacketPayload {
         // TODO: are we sure the `device_number` is not a `node_num` ?
         let mut bytes: [u8; 2] = [0u8; 2];
 
         NetworkEndian::write_u16(&mut bytes, device_number);
 
-        construct::two_bytes(CbusOpCodes::RQDDS, bytes[0], bytes[1])
+        construct::two_bytes(OpCode::RequestDeviceDataShortMode, bytes[0], bytes[1])
     }
 
     /// Request read of a node variable
     ///
-    /// `index` is the index for the node variable value requested. Response is [`CbusOpCodes::NVANS`].
+    /// `index` is the index for the node variable value requested. Response is [`OpCode::NVANS`].
     pub fn node_variable(node_num: VlcbNodeNumber, index: u8) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::three_bytes(CbusOpCodes::NVRD, bytes[0], bytes[1], index)
-    }
-
-    /// Request read of stored events by event index
-    ///
-    /// `index` is the index for the stored event requested.
-    /// Response is 0xF2 ([`CbusOpCodes::ENRSP`])
-    pub fn event(node_num: VlcbNodeNumber, index: u8) -> PacketPayload {
-        let bytes = node_num.as_bytes();
-        construct::three_bytes(CbusOpCodes::NENRD, bytes[0], bytes[1], index)
+        construct::three_bytes(OpCode::QueryNodeVariable, bytes[0], bytes[1], index)
     }
 
     /// Request read of a node parameter by index
     ///
     /// `index` is the index for the parameter requested. Index 0 returns the number of available
     /// parameters.
-    /// Response is 0x9B ([`CbusOpCodes::PARAN`]) See section 7.2.3 of the
+    /// Response is 0x9B ([`OpCode::PARAN`]) See section 7.2.3 of the
     /// CBUS Developer's guide for details of the node parameters.
     pub fn node_parameter(node_num: VlcbNodeNumber, index: u8) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::three_bytes(CbusOpCodes::RQNPN, bytes[0], bytes[1], index)
+        construct::three_bytes(OpCode::QueryNodeParameterByIndex, bytes[0], bytes[1], index)
     }
 }
 
 pub mod response {
-    use vlcb_core::cbus::VlcbNodeNumber;
-    use vlcb_defs::{CbusCmdErrs, CbusOpCodes};
+    use vlcb_core::vlcb::VlcbNodeNumber;
+    use vlcb_defs::{CommandError, OpCode};
     use super::super::{construct, PacketPayload};
 
     /// Write acknowledge
     ///
     /// Sent by a node to indicate the completion of a write to memory operation. All nodes must
-    /// issue [`CbusOpCodes::WRACK`] when a write operation to node variables, events or event variables has
+    /// issue [`OpCode::WRACK`] when a write operation to node variables, events or event variables has
     /// completed. This allows for teaching nodes where the processing time may be slow.
     pub fn write_ack(node_num: VlcbNodeNumber) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::two_bytes(CbusOpCodes::WRACK, bytes[0], bytes[1])
+        construct::two_bytes(OpCode::WriteAck, bytes[0], bytes[1])
     }
 
     /// Error messages from nodes during configuration
     ///
     /// Sent by node if there is an error when a configuration command is sent.
     /// See Section 12.4 of the CBUS developer's guide for details of the error codes.
-    pub fn error(node_num: VlcbNodeNumber, err: CbusCmdErrs) -> PacketPayload {
+    pub fn config_error(node_num: VlcbNodeNumber, err: CommandError) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::three_bytes(CbusOpCodes::CMDERR, bytes[0], bytes[1], err.into())
+        construct::three_bytes(OpCode::NodeConfigurationError, bytes[0], bytes[1], err.into())
     }
 
     /// Event space left reply from node
@@ -280,15 +219,15 @@ pub mod response {
     /// A one byte value giving the number of available events left in that node.
     pub fn available_event_slots(node_num: VlcbNodeNumber, slots_available: u8) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::three_bytes(CbusOpCodes::EVNLF, bytes[0], bytes[1], slots_available)
+        construct::three_bytes(OpCode::AvailableEventSlots, bytes[0], bytes[1], slots_available)
     }
 
     /// Number of events stored in node
     ///
-    /// Response to request 0x58 ([`CbusOpCodes::RQEVN`])
+    /// Response to request 0x58 ([`OpCode::RQEVN`])
     pub fn saved_events_amount(node_num: VlcbNodeNumber, saved_events: u8) -> PacketPayload {
         let bytes = node_num.as_bytes();
-        construct::three_bytes(CbusOpCodes::NUMEV, bytes[0], bytes[1], saved_events)
+        construct::three_bytes(OpCode::LearnedEventCount, bytes[0], bytes[1], saved_events)
     }
 
     /// Response to a request for a node variable value
@@ -365,5 +304,28 @@ pub mod response {
         //           _msg.data[6] = _mparams[6];     // number of NVs
         //           _msg.data[7] = _mparams[7];     // major code ver
         todo!()
+    }
+}
+
+pub mod ctrl {
+    use vlcb_core::vlcb::VlcbNodeNumber;
+    use vlcb_defs::OpCode;
+    use super::super::{construct, PacketPayload};
+
+    /// Node number release
+    ///
+    /// Sent by node when taken out of service. e.g. when reverting to SLiM mode.
+    pub fn release_node_number(node_num: VlcbNodeNumber) -> PacketPayload {
+        let bytes = node_num.as_bytes();
+        construct::two_bytes(OpCode::NodeNumberReleased, bytes[0], bytes[1])
+    }
+
+    /// Node number acknowledge
+    ///
+    /// Sent by a node to verify its presence and confirm its node id. This message is sent to
+    /// acknowledge an [`OpCode::SNN`].
+    pub fn ack_node_number(node_num: VlcbNodeNumber) -> PacketPayload {
+        let bytes = node_num.as_bytes();
+        construct::two_bytes(OpCode::NodeNumberAck, bytes[0], bytes[1])
     }
 }

@@ -7,27 +7,27 @@ use crate::wire::VLCB_MAX_PAYLOAD;
 /// as of yet and support up to 6 bytes of data.
 
 use super::{construct, PacketPayload};
-use vlcb_defs::CbusOpCodes;
+use vlcb_defs::OpCode;
 use heapless::Vec;
 
 /// Construct a packet with extended opcode and a payload
 ///
 /// # Panics
 /// This method panics if the payload is over 6 octets long
-pub fn with_payload(opcode_ext: u8, payload: &[u8]) -> PacketPayload {
+pub fn from_bytes(opcode_ext: u8, payload: &[u8]) -> PacketPayload {
     let len = payload.len();
     if len > 6 {
         construct::len_mismatch_fail(len, 6);
     }
 
     let opc = match len {
-        0 => CbusOpCodes::EXTC,
-        1 => CbusOpCodes::EXTC1,
-        2 => CbusOpCodes::EXTC2,
-        3 => CbusOpCodes::EXTC3,
-        4 => CbusOpCodes::EXTC4,
-        5 => CbusOpCodes::EXTC5,
-        6 => CbusOpCodes::EXTC6,
+        0 => OpCode::ExtOpCode,
+        1 => OpCode::ExtOpCode1,
+        2 => OpCode::ExtOpCode2,
+        3 => OpCode::ExtOpCode3,
+        4 => OpCode::ExtOpCode4,
+        5 => OpCode::ExtOpCode5,
+        6 => OpCode::ExtOpCode6,
         _ => unreachable!(),
     };
 
@@ -36,10 +36,10 @@ pub fn with_payload(opcode_ext: u8, payload: &[u8]) -> PacketPayload {
     buf.push(opc as u8);
     buf.push(opcode_ext);
     buf.extend_from_slice(payload);
-    construct::new(buf.as_slice())
+    construct::from_bytes(buf.as_slice())
 }
 
 /// Constructs a packet with extended opcode and no payload
 pub fn no_data(opcode_ext: u8) -> PacketPayload {
-    construct::one_byte(CbusOpCodes::EXTC, opcode_ext)
+    construct::one_byte(OpCode::ExtOpCode, opcode_ext)
 }

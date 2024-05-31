@@ -7,7 +7,7 @@ extern crate alloc;
 pub mod macros;
 pub mod service;
 pub mod can;
-pub mod cbus;
+pub mod vlcb;
 pub mod dcc;
 pub mod fast_clock;
 pub mod module;

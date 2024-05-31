@@ -15,7 +15,7 @@ license = "GPL-3"
 autoexamples = false
 
 [dependencies]
-vlcb-defs = { path = "../../vendor/VLCB-defs/rust" }
+vlcb-defs = "0.1.0-alpha.1"
 vlcb-core = { path = "../core" }
 embedded-hal = "1.0.0-rc.1"
 embedded-time = "0.12.1"

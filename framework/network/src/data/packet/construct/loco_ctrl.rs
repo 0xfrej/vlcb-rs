@@ -1,45 +1,22 @@
 pub mod command {
     use vlcb_core::dcc::{EngineFunctionRange, EngineState};
-    use vlcb_defs::{CbusErrs, CbusOpCodes, CbusStmodModes};
+    use vlcb_defs::{DccError, OpCode, DccThrottleMode};
     use zerocopy::{ByteOrder, NetworkEndian};
     use super::super::{construct, PacketPayload};
     use heapless::Vec;
 
-    /// Track Off
-    ///
-    /// Commonly broadcasted to all nodes by a command station to indicate track
-    /// power is off and no further command packets should be sent, except inquiries.
-    pub fn track_off() -> PacketPayload {
-        construct::no_data(CbusOpCodes::TOF)
-    }
-
-    /// Track on
-    ///
-    /// Commonly broadcasted to all nodes by a command station to indicate track power is on.
-    pub fn track_on() -> PacketPayload {
-        construct::no_data(CbusOpCodes::TON)
-    }
-
-    /// Track stopped
-    ///
-    /// Commonly broadcast to all nodes by a command station to indicate all
-    /// engines have been emergency stopped.
-    pub fn emergency_stop() -> PacketPayload {
-        construct::no_data(CbusOpCodes::ESTOP)
-    }
-
     /// Request track off
     ///
     /// Sent to request change of track power state to “off”.
-    pub fn request_track_off() -> PacketPayload {
-        construct::no_data(CbusOpCodes::RTOF)
+    pub fn track_power_off() -> PacketPayload {
+        construct::no_data(OpCode::DccTrackPowerOff)
     }
 
     /// Request track on
     ///
     /// Sent to request change of track power state to “on”.
-    pub fn request_track_on() -> PacketPayload {
-        construct::no_data(CbusOpCodes::RTON)
+    pub fn track_power_on() -> PacketPayload {
+        construct::no_data(OpCode::DccTrackPowerOn)
     }
 
     /// Request emergency stop all
@@ -47,8 +24,8 @@ pub mod command {
     /// Sent to request an emergency stop to all trains.
     /// Does not affect accessory control.
     /// See section 9.1.8 of the CBUS Developer's guide
-    pub fn request_emergency_stop() -> PacketPayload {
-        construct::no_data(CbusOpCodes::RESTP)
+    pub fn emergency_stop() -> PacketPayload {
+        construct::no_data(OpCode::DccEmergencyStop)
     }
 
 
@@ -56,8 +33,8 @@ pub mod command {
     ///
     /// Sent by a CAB to the Command Station. The engine with that Session
     /// number is removed from the active engine list.
-    pub fn release_engine(session_id: u8) -> PacketPayload {
-        construct::one_byte(CbusOpCodes::KLOC, session_id)
+    pub fn release_session(session_id: u8) -> PacketPayload {
+        construct::one_byte(OpCode::DccReleaseSession, session_id)
     }
 
     /// Session keep alive
@@ -66,33 +43,33 @@ pub mod command {
     /// between keep alive messages must be less than the session timeout implemented by the
     /// command station.
     pub fn session_keep_alive(session_id: u8) -> PacketPayload {
-        construct::one_byte(CbusOpCodes::DKEEP, session_id)
+        construct::one_byte(OpCode::DccSessionKeepAlive, session_id)
     }
 
     /// Request a new session for loco
     ///
-    /// The command station responds with ([`CbusOpCodes::PLOC`]) if engine is free and is being
-    /// assigned. Otherwise responds with Err: [`CbusErrs::LOCO_ADDR_TAKEN`] or
-    /// Err: [`CbusErrs::LOCO_STACK_FULL`]. This command is typically sent by a cab
+    /// The command station responds with ([`OpCode::PLOC`]) if engine is free and is being
+    /// assigned. Otherwise responds with Err: [`DccError::LOCO_ADDR_TAKEN`] or
+    /// Err: [`DccError::LOCO_STACK_FULL`]. This command is typically sent by a cab
     /// to the command station following a change of the controlled decoder address.
-    /// [`CbusOpCodes::RLOC`] is exactly equivalent to [`CbusOpCodes::GLOC`] with
+    /// [`OpCode::RLOC`] is exactly equivalent to [`OpCode::GLOC`] with
     /// all flag bits set to zero, but command stations must continue to support
-    /// [`CbusOpCodes::RLOC`] for backwards compatibility.
-    pub fn allocate_engine_session(engine_addr: u16) -> PacketPayload {
+    /// [`OpCode::RLOC`] for backwards compatibility.
+    pub fn allocate_loco_session(engine_addr: u16) -> PacketPayload {
         let mut payload = [0u8; 2];
         NetworkEndian::write_u16(&mut payload, engine_addr);
-        construct::two_bytes(CbusOpCodes::RLOC, payload[0], payload[1])
+        construct::two_bytes(OpCode::DccRequestNewSession, payload[0], payload[1])
     }
 
     /// Allocate loco (used to allocate to a shuttle in cancmd)
-    pub fn allocate_loco(session_id: u8, allocation_id: u8) -> PacketPayload {
-        construct::two_bytes(CbusOpCodes::ALOC, session_id, allocation_id)
+    pub fn allocate_loco_to_activity(session_id: u8, activity_id: u8) -> PacketPayload {
+        construct::two_bytes(OpCode::DccAllocateLocoToActivity, session_id, activity_id)
     }
 
     /// Set Throttle mode
     pub fn set_throttle_mode(
         session_id: u8,
-        throttle_mode: CbusStmodModes,
+        throttle_mode: DccThrottleMode,
         service_mode: bool,
         sound_control_mode: bool,
     ) -> PacketPayload {
@@ -106,7 +83,7 @@ pub mod command {
             throttle_mode |= 0x08;
         }
 
-        construct::two_bytes(CbusOpCodes::STMOD, session_id, throttle_mode)
+        construct::two_bytes(OpCode::DccSetThrottleMode, session_id, throttle_mode)
     }
 
     /// Add loco to a consist
@@ -114,28 +91,28 @@ pub mod command {
     /// Adds a decoder to a consist.
     /// `consist` has the most significant bit set if consist direction is reversed.
     pub fn add_loco_to_consist(session_id: u8, consist: u8) -> PacketPayload {
-        construct::two_bytes(CbusOpCodes::PCON, session_id, consist)
+        construct::two_bytes(OpCode::DccConsistAddLoco, session_id, consist)
     }
 
     /// Remove loco from consist
     ///
     /// Removes a loco from a consist.
     pub fn remove_loco_from_consist(session_id: u8, consist: u8) -> PacketPayload {
-        construct::two_bytes(CbusOpCodes::KCON, session_id, consist)
+        construct::two_bytes(OpCode::DccConsistRemoveLoco, session_id, consist)
     }
 
     /// Set loco speed and dir
     ///
     /// The speed is an unsigned 7 bit number
     /// Sent by a CAB or equivalent to request an engine speed/dir change.
-    pub fn set_loco_speed_dir(session_id: u8, speed: u8, is_reversed: bool) -> PacketPayload {
+    pub fn set_loco_throttle(session_id: u8, speed: u8, is_reversed: bool) -> PacketPayload {
         let mut data = speed & 0x7F;
 
         if is_reversed {
             data |= 0x80;
         }
 
-        construct::two_bytes(CbusOpCodes::DSPD, session_id, data)
+        construct::two_bytes(OpCode::DccSetLocoThrottle, session_id, data)
     }
 
     /// Set engine flags
@@ -144,7 +121,7 @@ pub mod command {
     /// Sent by a cab to notify the command station of a change in engine flags.
     pub fn set_loco_flags(
         session_id: u8,
-        throttle_mode: CbusStmodModes,
+        throttle_mode: DccThrottleMode,
         lights_on: bool,
         relative_direction: bool,
         state: EngineState,
@@ -162,7 +139,7 @@ pub mod command {
         let state: u8 = state.into();
         data |= state << 4u8;
 
-        construct::two_bytes(CbusOpCodes::DFLG, session_id, data)
+        construct::two_bytes(OpCode::DccSetLocoFlags, session_id, data)
     }
 
     /// Set Engine function on
@@ -170,18 +147,19 @@ pub mod command {
     /// The `func_num` is an unsigned 7 bit integer
     ///
     /// Sent by a cab to turn on a specific loco function. This provides an alternative method to
-    /// [`CbusOpCodes::DFUN`] for controlling loco functions. A command station must implement both methods.
+    /// [`OpCode::DFUN`] for controlling loco functions. A command station must implement both methods.
     pub fn loco_func_on(session_id: u8, func_num: u8) -> PacketPayload {
-        construct::two_bytes(CbusOpCodes::DFNON, session_id, func_num & 0x7F)
+        construct::two_bytes(OpCode::DccLocoFunctionOn, session_id, func_num & 0x7F)
     }
+
     /// Set Engine function off
     ///
     /// The `func_num` is an unsigned 7 bit integer
     ///
     /// Sent by a cab to turn off a specific loco function. This provides an alternative method to
-    /// [`CbusOpCodes::DFUN`] for controlling loco functions. A command station must implement both methods.
+    /// [`OpCode::DFUN`] for controlling loco functions. A command station must implement both methods.
     pub fn loco_func_off(session_id: u8, func_num: u8) -> PacketPayload {
-        construct::two_bytes(CbusOpCodes::DFNOF, session_id, func_num & 0x7F)
+        construct::two_bytes(OpCode::DccLocoFunctionOff, session_id, func_num & 0x7F)
     }
 
     /// Set engine functions
@@ -192,7 +170,7 @@ pub mod command {
         selection_range: EngineFunctionRange,
         data: u8,
     ) -> PacketPayload {
-        construct::three_bytes(CbusOpCodes::DFUN, session_id, selection_range.into(), data)
+        construct::three_bytes(OpCode::DccSetLocoFunctions, session_id, selection_range.into(), data)
     }
 
     /// Request 3-byte DCC Packet
@@ -220,10 +198,10 @@ pub mod command {
         }
 
         let opc = match payload_len {
-            3 => CbusOpCodes::RDCC3,
-            4 => CbusOpCodes::RDCC4,
-            5 => CbusOpCodes::RDCC5,
-            6 => CbusOpCodes::RDCC6,
+            3 => OpCode::DccSendRawPacket3,
+            4 => OpCode::DccSendRawPacket4,
+            5 => OpCode::DccSendRawPacket5,
+            6 => OpCode::DccSendRawPacket6,
             _ => unreachable!(),
         };
 
@@ -232,7 +210,7 @@ pub mod command {
         data.push(opc.into()).unwrap();
         data.push(times).unwrap();
         data.extend_from_slice(payload).unwrap();
-        construct::new(data.as_slice())
+        construct::from_bytes(data.as_slice())
     }
 
     pub fn write_cv_data() -> PacketPayload {
@@ -305,71 +283,54 @@ pub mod command {
     }
 
     pub mod query {
-    use vlcb_defs::{CbusOpCodes, CbusErrs};
+    use vlcb_defs::{OpCode, DccError};
     use zerocopy::{AsBytes, ByteOrder, NetworkEndian};
     use super::super::{construct, PacketPayload};
     use vlcb_core::dcc::{LocoAddress, SessionQueryMode};
 
     /// Request Command Station Status
     ///
-    /// Sent to query the status of the command station. See description of ([`CbusOpCodes::STAT`]) for the
+    /// Sent to query the status of the command station. See description of ([`OpCode::STAT`]) for the
     /// response from the command station.
     pub fn command_station_status() -> PacketPayload {
-        construct::no_data(CbusOpCodes::RSTAT)
+        construct::no_data(OpCode::DccQueryCommandStationStatus)
     }
 
     /// Query engine by handle
     ///
-    /// The command station responds with [`CbusOpCodes::PLOC`] if the session is assigned.
-    /// Otherwise responds with ERR: [`CbusErrs::LOCO_NOT_FOUND`]. See section 12.5. of the
+    /// The command station responds with [`OpCode::PLOC`] if the session is assigned.
+    /// Otherwise responds with ERR: [`DccError::LOCO_NOT_FOUND`]. See section 12.5. of the
     /// CBUS Developer's guide.
-    pub fn engine_report(session_id: u8) -> PacketPayload {
-        construct::one_byte(CbusOpCodes::QLOC, session_id)
+    pub fn loco_status(session_id: u8) -> PacketPayload {
+        construct::one_byte(OpCode::DccQueryLocoStatus, session_id)
     }
 
     /// Query consist
     ///
-    /// Allows enumeration of a consist. Command station responds with [`CbusOpCodes::PLOC`] if an
-    /// engine exists at the specified index, otherwise responds with ERR: [`CbusErrs::CONSIST_EMPTY`]
+    /// Allows enumeration of a consist. Command station responds with [`OpCode::PLOC`] if an
+    /// engine exists at the specified index, otherwise responds with ERR: [`DccError::CONSIST_EMPTY`]
     ///
     /// TODO: check if the returned error is CONSIST_EMPTY or LOCO_NOT_FOUND
     ///
     /// #Note
     /// A command station needs not support this opcode if it uses advanced consisting
     /// and has no way of reading back the CV currently containing the consist address in a loco.
-    pub fn enumerate_consist(consist_addr: u8, engine_index: u8) -> PacketPayload {
-        construct::two_bytes(CbusOpCodes::QCON, consist_addr, engine_index)
-    }
-
-    /// Request engine session
-    ///
-    /// `use_long_addresses` - set to true if the loco has an 14 bit address
-    ///
-    /// The command station responds with ([`CbusOpCodes::PLOC`]) if engine is free and is being
-    /// assigned. Otherwise responds with (ERR): [`CbusErrs::LOCO_ADDR_TAKEN`]. or (ERR:) [`CbusErrs::LOCO_STACK_FULL`].
-    /// This command is typically sent by a cab to the command station following
-    /// a change of the controlled decoder address. [`CbusOpCodes::RLOC`] is exactly equivalent to [`CbusOpCodes::GLOC`] with all
-    /// flag bits set to zero, but command stations must continue to support [`CbusOpCodes::RLOC`] for backwards
-    /// compatibility.
-    pub fn engine_session(
-        loco_addr: LocoAddress,
-    ) -> PacketPayload {
-        let addr = loco_addr.as_bytes_sanitized();
-        construct::two_bytes(CbusOpCodes::RLOC, addr[0], addr[1])
+    pub fn consist(consist_addr: u8, engine_index: u8) -> PacketPayload {
+        construct::two_bytes(OpCode::DccQueryConsist, consist_addr, engine_index)
     }
 
     /// Get engine session (with support for steal/share)
     ///
-    /// With [`SessionQueryMode::Default`] this request behaves as [`CbusOpCodes::RLOC`]
+    /// With [`SessionQueryMode::Default`] this request behaves as [`OpCode::RLOC`]
     ///
-    /// The command station responds with ([`CbusOpCodes::PLOC`]) if the request is successful.
-    /// Otherwise responds with (ERR): [`CbusErrs::LOCO_ADDR_TAKEN`]. (ERR:) [`CbusErrs::LOCO_STACK_FULL`] or (ERR) [`CbusErrs::SESSION_NOT_PRESENT`].
+    /// The command station responds with ([`OpCode::PLOC`]) if the request is successful.
+    /// Otherwise responds with (ERR): [`DccError::LOCO_ADDR_TAKEN`]. (ERR:) [`DccError::LOCO_STACK_FULL`] or (ERR) [`DccError::SESSION_NOT_PRESENT`].
     /// The latter indicates that there is no current session to steal/share depending on the flag
     /// bits set in the request.
     /// GLOC with all flag bits set to zero is exactly equivalent to RLOC, but command stations
     /// must continue to support RLOC for backwards compatibility.
     /// See section 9.1.2. of the CBUS developer's guide for a detailed description of the use of DCC loco sessions
-    pub fn engine_session_extended(
+    pub fn loco_session(
         loco_addr: LocoAddress,
         query_mode: SessionQueryMode,
     ) -> PacketPayload {
@@ -377,7 +338,7 @@ pub mod command {
 
         let flags: u8 = query_mode.into();
 
-        construct::three_bytes(CbusOpCodes::GLOC, addr[0], addr[1], flags)
+        construct::three_bytes(OpCode::DccQueryLocoSession, addr[0], addr[1], flags)
     }
 
     pub fn cv_data() -> PacketPayload {
@@ -416,7 +377,7 @@ pub mod command {
 }
 
 pub mod response {
-    use vlcb_defs::{CbusOpCodes};
+    use vlcb_defs::{OpCode};
     use super::super::{construct, PacketPayload};
 
     /// Service mode status
@@ -424,7 +385,7 @@ pub mod response {
     /// Status returned by command station/programmer at end of programming
     /// operation that does not return data.
     pub fn service_mode_status(session_id: u8, status: u8) -> PacketPayload {
-        construct::two_bytes(CbusOpCodes::SSTAT, session_id, status)
+        construct::two_bytes(OpCode::DccServiceModeStatus, session_id, status)
     }
 
 
@@ -478,42 +439,42 @@ pub mod response {
 
     pub mod error {
         use vlcb_core::dcc::LocoAddress;
-        use vlcb_defs::{CbusErrs, CbusOpCodes};
+        use vlcb_defs::{DccError, OpCode};
         use super::super::super::{construct, PacketPayload};
 
         /// Loco stack full error
-        pub fn stack_full(loco_addr: LocoAddress) -> PacketPayload {
+        pub fn loco_stack_full(loco_addr: LocoAddress) -> PacketPayload {
             let addr = loco_addr.as_bytes_sanitized();
-            construct::three_bytes(CbusOpCodes::ERR, addr[0], addr[1], CbusErrs::LOCO_STACK_FULL.into())
+            construct::three_bytes(OpCode::DccCommandStationError, addr[0], addr[1], DccError::LocoStackIsFull.into())
         }
 
         /// Loco address is already taken
-        pub fn addr_taken(loco_addr: LocoAddress) -> PacketPayload {
+        pub fn loco_addr_taken(loco_addr: LocoAddress) -> PacketPayload {
             let addr = loco_addr.as_bytes_sanitized();
-            construct::three_bytes(CbusOpCodes::ERR, addr[0], addr[1], CbusErrs::LOCO_ADDR_TAKEN.into())
+            construct::three_bytes(OpCode::DccCommandStationError, addr[0], addr[1], DccError::LocoAddressIsTaken.into())
         }
 
         /// Session is not present
         pub fn session_not_found(session_id: u8) -> PacketPayload {
-            construct::three_bytes(CbusOpCodes::ERR, session_id, 0, CbusErrs::SESSION_NOT_PRESENT.into())
+            construct::three_bytes(OpCode::DccCommandStationError, session_id, 0, DccError::SessionIsNotPresent.into())
         }
 
         /// Consist is empty
         pub fn consist_is_empty(session_id: u8) -> PacketPayload {
-            construct::three_bytes(CbusOpCodes::ERR, session_id, 0, CbusErrs::SESSION_NOT_PRESENT.into())
+            construct::three_bytes(OpCode::DccCommandStationError, session_id, 0, DccError::EmptyConsist.into())
         }
 
         /// Loco not found
         pub fn loco_not_found(session_id: u8) -> PacketPayload {
-            construct::three_bytes(CbusOpCodes::ERR, session_id, 0, CbusErrs::LOCO_NOT_FOUND.into())
+            construct::three_bytes(OpCode::DccCommandStationError, session_id, 0, DccError::LocoWasNotFound.into())
         }
 
         /// CAN bus error
         ///
         /// This would be sent out in the unlikely event that the command
         /// station buffers overflow.
-        pub fn can_error() -> PacketPayload {
-            construct::three_bytes(CbusOpCodes::ERR, 0, 0, CbusErrs::CMD_RX_BUF_OFLOW.into())
+        pub fn rx_buffer_overflown() -> PacketPayload {
+            construct::three_bytes(OpCode::DccCommandStationError, 0, 0, DccError::RxBufferOverflow.into())
         }
 
         /// Invalid request
@@ -522,14 +483,42 @@ pub mod response {
         /// request with both steal and share flags set.
         pub fn invalid_request(loco_addr: LocoAddress) -> PacketPayload {
             let addr = loco_addr.as_bytes_sanitized();
-            construct::three_bytes(CbusOpCodes::ERR, addr[0], addr[1], CbusErrs::INVALID_REQUEST.into())
+            construct::three_bytes(OpCode::DccCommandStationError, addr[0], addr[1], DccError::InvalidRequest.into())
         }
 
         /// Session cancelled
         ///
         /// Sent to a cab to cancel the session when another cab is stealing that session.
         pub fn session_cancelled(session_id: u8) -> PacketPayload {
-            construct::three_bytes(CbusOpCodes::ERR, session_id, 0, CbusErrs::SESSION_CANCELLED.into())
+            construct::three_bytes(OpCode::DccCommandStationError, session_id, 0, DccError::SessionWasCancelled.into())
         }
+    }
+}
+
+pub mod ctrl {
+    use vlcb_defs::OpCode;
+    use super::super::{construct, PacketPayload};
+
+    /// Track Off
+    ///
+    /// Commonly broadcasted to all nodes by a command station to indicate track
+    /// power is off and no further command packets should be sent, except inquiries.
+    pub fn track_powered_off() -> PacketPayload {
+        construct::no_data(OpCode::DccTrackPoweredOff)
+    }
+
+    /// Track on
+    ///
+    /// Commonly broadcasted to all nodes by a command station to indicate track power is on.
+    pub fn track_powered_on() -> PacketPayload {
+        construct::no_data(OpCode::DccTrackPoweredOn)
+    }
+
+    /// Track stopped
+    ///
+    /// Commonly broadcast to all nodes by a command station to indicate all
+    /// engines have been emergency stopped.
+    pub fn emergency_stop_engaged() -> PacketPayload {
+        construct::no_data(OpCode::DccEmergencyStopEngaged)
     }
 }

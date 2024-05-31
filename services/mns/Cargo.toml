@@ -16,4 +16,4 @@ autoexamples = false
 
 [dependencies]
 vlcb-core = { path = "../../framework/core" }
-vlcb-defs = { path = "../../vendor/VLCB-defs/rust" }
+vlcb-defs = "0.1.0-alpha.1"

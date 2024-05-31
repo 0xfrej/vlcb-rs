@@ -13,7 +13,7 @@ use super::vlcb_packet::*;
 use core::convert::Infallible;
 use core::marker::PhantomData;
 
-use vlcb_core::cbus::VlcbNodeNumber;
+use vlcb_core::vlcb::VlcbNodeNumber;
 use core::result::Result;
 use embedded_time::{Clock, Instant};
 use nb::Error::WouldBlock;

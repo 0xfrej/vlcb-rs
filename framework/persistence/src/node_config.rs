@@ -2,9 +2,9 @@ use crate::{PersistentStorage, Storage};
 use delegate::delegate;
 use embedded_storage::Storage as StorageDriver;
 use vlcb_core::can::{VlcbCanId, CANID_SIZE};
-use vlcb_core::cbus::{EventId, VlcbNodeNumber, EVENT_SIZE, NODENUM_SIZE};
+use vlcb_core::vlcb::{EventId, VlcbNodeNumber, EVENT_SIZE, NODENUM_SIZE};
 use vlcb_core::module::NodeFlags;
-use vlcb_defs::VlcbModeParams;
+use vlcb_defs::ModuleMode;
 use core::cell::{RefCell};
 use core::mem::MaybeUninit;
 use heapless::{FnvIndexMap, Vec};
@@ -41,7 +41,7 @@ pub trait NodeConfig {
     fn set_nv(&mut self, index: u8, value: u8) -> Result<(), Error>;
     fn can_id(&self) -> &VlcbCanId;
     fn set_can_id(&mut self, can_id: VlcbCanId);
-    fn mode(&self) -> VlcbModeParams;
+    fn mode(&self) -> ModuleMode;
     fn set_mode_uninitialized(&mut self);
     fn set_mode_normal(&mut self, node_num: VlcbNodeNumber);
     fn node_number(&self) -> &VlcbNodeNumber;
@@ -91,7 +91,7 @@ pub struct NodeConfigStorage<
     const NODE_VAR_COUNT: usize,
 > {
     flags: NodeFlags,
-    current_mode: VlcbModeParams,
+    current_mode: ModuleMode,
     can_id: VlcbCanId,
     node_number: VlcbNodeNumber,
     nvs: [u8; NODE_VAR_COUNT],
@@ -107,7 +107,7 @@ impl<
     fn default() -> Self {
         Self {
             flags: NodeFlags::empty(),
-            current_mode: VlcbModeParams::UNINITIALISED,
+            current_mode: ModuleMode::Uninitialized,
             nvs: [UNINITIALISED_VALUE; NODE_VAR_COUNT],
             can_id: VlcbCanId::default(),
             node_number: VlcbNodeNumber::default(),
@@ -157,7 +157,7 @@ impl<
         self.nvs.iter_mut().for_each(|v| *v = 0);
         self.can_id = VlcbCanId::default();
         self.node_number = VlcbNodeNumber::default();
-        self.current_mode = VlcbModeParams::UNINITIALISED;
+        self.current_mode = ModuleMode::Uninitialized;
         self.flags = NodeFlags::empty();
         self.reset_flag = true;
     }
@@ -224,17 +224,17 @@ impl<
         self.can_id = can_id
     }
 
-    fn mode(&self) -> VlcbModeParams {
+    fn mode(&self) -> ModuleMode {
         self.current_mode
     }
 
     fn set_mode_uninitialized(&mut self) {
-        self.current_mode = VlcbModeParams::UNINITIALISED;
+        self.current_mode = ModuleMode::Uninitialized;
         self.node_number = VlcbNodeNumber::default();
     }
 
     fn set_mode_normal(&mut self, node_num: VlcbNodeNumber) {
-        self.current_mode = VlcbModeParams::NORMAL;
+        self.current_mode = ModuleMode::Normal;
         self.node_number = node_num;
     }
 
@@ -501,7 +501,7 @@ impl<
 
         // if the current mode is NORMAL we can store the current node number if it's different
         // ignore otherwise as it's considered as trash values and it won't be loaded
-        if self.mode() == VlcbModeParams::NORMAL {
+        if self.mode() == ModuleMode::Normal {
             // read out the stored node number
             let _ = storage.read(Self::node_num_addr_start() as u32, &mut buf[..NODENUM_SIZE]);
             let node_num = self.inner.node_number().as_bytes();
@@ -573,8 +573,8 @@ impl<
 
             // readout the mode and initialize the mode based on it's current status
             let _ = storage.read(Self::mode_addr() as u32, &mut buf[..1]);
-            match VlcbModeParams::from(buf[0]) {
-                VlcbModeParams::NORMAL => {
+            match ModuleMode::try_from(buf[0]).unwrap_or(ModuleMode::Uninitialized) {
+                ModuleMode::Normal => {
                     // read out the stored node number
                     let _ = storage.read(Self::node_num_addr_start() as u32, &mut buf[..NODENUM_SIZE]);
                     self.inner.set_mode_normal(VlcbNodeNumber::from_bytes(&buf[..NODENUM_SIZE]))
@@ -642,7 +642,7 @@ impl<
             fn has_event(&self, evt: &EventId) -> bool;
             fn get_nv(&self, index: u8) -> Result<u8, Error>;
             fn can_id(&self) -> &VlcbCanId;
-            fn mode(&self) -> VlcbModeParams;
+            fn mode(&self) -> ModuleMode;
             fn node_number(&self) -> &VlcbNodeNumber;
             fn was_reset(&self) -> bool;
             fn is_heartbeat_on(&self) -> bool;

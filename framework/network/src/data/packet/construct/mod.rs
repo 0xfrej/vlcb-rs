@@ -19,7 +19,7 @@ pub struct PacketPayload {
 }
 
 mod construct {
-    use vlcb_defs::CbusOpCodes;
+    use vlcb_defs::OpCode;
     use heapless::Vec;
 
     use super::PacketPayload;
@@ -35,7 +35,7 @@ mod construct {
     }
 
     #[inline]
-    pub(super) fn new(data: &[u8]) -> PacketPayload {
+    pub(super) fn from_bytes(data: &[u8]) -> PacketPayload {
         debug_assert!(data.len() < 9, "payload slice cannot be larger than 8 octets, given ({})", data.len());
 
         PacketPayload {
@@ -44,43 +44,43 @@ mod construct {
     }
 
     #[inline]
-    pub(super) fn no_data(opcode: CbusOpCodes) -> PacketPayload {
-        new(&[opcode.into()])
+    pub(super) fn no_data(opcode: OpCode) -> PacketPayload {
+        from_bytes(&[opcode.into()])
     }
 
     #[inline]
-    pub(super) fn one_byte(opcode: CbusOpCodes, a0: u8) -> PacketPayload {
-        new(&[opcode.into(), a0])
+    pub(super) fn one_byte(opcode: OpCode, a0: u8) -> PacketPayload {
+        from_bytes(&[opcode.into(), a0])
     }
 
     #[inline]
-    pub(super) fn two_bytes(opcode: CbusOpCodes, a0: u8, a1: u8) -> PacketPayload {
-        new(&[opcode.into(), a0, a1])
+    pub(super) fn two_bytes(opcode: OpCode, a0: u8, a1: u8) -> PacketPayload {
+        from_bytes(&[opcode.into(), a0, a1])
     }
 
     #[inline]
-    pub(super) fn three_bytes(opcode: CbusOpCodes, a0: u8, a1: u8, a2: u8) -> PacketPayload {
-        new(&[opcode.into(), a0, a1, a2])
+    pub(super) fn three_bytes(opcode: OpCode, a0: u8, a1: u8, a2: u8) -> PacketPayload {
+        from_bytes(&[opcode.into(), a0, a1, a2])
     }
 
     #[inline]
-    pub(super) fn four_bytes(opcode: CbusOpCodes, a0: u8, a1: u8, a2: u8, a3: u8) -> PacketPayload {
-        new(&[opcode.into(), a0, a1, a2, a3])
+    pub(super) fn four_bytes(opcode: OpCode, a0: u8, a1: u8, a2: u8, a3: u8) -> PacketPayload {
+        from_bytes(&[opcode.into(), a0, a1, a2, a3])
     }
 
     #[inline]
-    pub(super) fn five_bytes(opcode: CbusOpCodes, a0: u8, a1: u8, a2: u8, a3: u8, a4: u8) -> PacketPayload {
-        new(&[opcode.into(), a0, a1, a2, a3, a4])
+    pub(super) fn five_bytes(opcode: OpCode, a0: u8, a1: u8, a2: u8, a3: u8, a4: u8) -> PacketPayload {
+        from_bytes(&[opcode.into(), a0, a1, a2, a3, a4])
     }
 
     #[inline]
-    pub(super) fn six_bytes(opcode: CbusOpCodes, a0: u8, a1: u8, a2: u8, a3: u8, a4: u8, a5: u8) -> PacketPayload {
-        new(&[opcode.into(), a0, a1, a2, a3, a4, a5])
+    pub(super) fn six_bytes(opcode: OpCode, a0: u8, a1: u8, a2: u8, a3: u8, a4: u8, a5: u8) -> PacketPayload {
+        from_bytes(&[opcode.into(), a0, a1, a2, a3, a4, a5])
     }
 
     #[inline]
-    pub(super) fn seven_bytes(opcode: CbusOpCodes, a0: u8, a1: u8, a2: u8, a3: u8, a4: u8, a5: u8, a6: u8) -> PacketPayload {
-        new(&[opcode.into(), a0, a1, a2, a3, a4, a5, a6])
+    pub(super) fn seven_bytes(opcode: OpCode, a0: u8, a1: u8, a2: u8, a3: u8, a4: u8, a5: u8, a6: u8) -> PacketPayload {
+        from_bytes(&[opcode.into(), a0, a1, a2, a3, a4, a5, a6])
     }
 }
 
@@ -89,3 +89,18 @@ pub mod loco_ctrl;
 pub mod module_cfg;
 pub mod layout_ctrl;
 pub mod ext;
+
+/// Helper opcodes that can be used during debugging in development environments.
+/// These should never be used in production builds!
+pub mod debug {
+    use vlcb_defs::OpCode;
+    use super::{construct, PacketPayload};
+
+    /// Debug with one data byte
+    ///
+    /// The byte is a freeform status value for debugging during CBUS module development.
+    /// Not used during normal operation
+    pub fn send_debug_data(data: u8) -> PacketPayload {
+        construct::one_byte(OpCode::DebugMsg1, data)
+    }
+}

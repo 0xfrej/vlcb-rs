@@ -1,6 +1,6 @@
 #![allow(warnings)] // TODO: Remove and fix warns
 use super::*;
-use vlcb_defs::CbusOpCodes;
+use vlcb_defs::OpCode;
 
 use crate::{phy::{Medium, TxToken}, wire::VlcbRepr};
 

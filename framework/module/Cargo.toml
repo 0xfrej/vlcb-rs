@@ -18,7 +18,7 @@ vlcb-macros = { path = "../macros" }
 vlcb-core = { path = "../core" }
 vlcb-ui = { path = "../ui" }
 vlcb-network = { path = "../network" }
-vlcb-defs = { path = "../../vendor/VLCB-defs/rust" }
+vlcb-defs = "0.1.0-alpha.1"
 vlcb-persistence = { path = "../persistence" }
 vlcb-svc-all = { path = "../../services/all" }
 managed = { version = "0.8", default-features = false, features = ["map"] }

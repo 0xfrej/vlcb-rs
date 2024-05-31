@@ -14,7 +14,7 @@ categories = ["no-std", "embedded", "network-programming"]
 license = "Apache-2"
 
 [dependencies]
-vlcb-defs = { path = "../../vendor/VLCB-defs/rust" }
+vlcb-defs = "0.1.0-alpha.1"
 vlcb-core = { path = "../core" }
 heapless = "0.8.0"
 rclite = { version = "0.2.4" }

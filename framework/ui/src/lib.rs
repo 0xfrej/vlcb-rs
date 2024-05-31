@@ -4,7 +4,7 @@
 use core::marker::PhantomData;
 use embedded_simple_ui::{led::{effects::{blink, pulse, LedEffect}, Led}, switch::Switch};
 use embedded_time::{duration::Milliseconds, Clock, Instant};
-use vlcb_defs::VlcbModeParams;
+use vlcb_defs::ModuleMode;
 
 pub mod config {
     pub const SW_LONG_HOLD_MS: u16 = 6000;
@@ -53,17 +53,17 @@ impl<LED: Led<C>, SW: Switch<C>, C: Clock> HardwareUi<LED, SW, C> {
         }
     }
 
-    pub fn indicate_mode(&mut self, mode: VlcbModeParams) {
+    pub fn indicate_mode(&mut self, mode: ModuleMode) {
         match mode {
-            VlcbModeParams::NORMAL => {
+            ModuleMode::Normal => {
                 self.led_yellow.turn_on();
                 self.led_green.turn_off();
             },
-            VlcbModeParams::UNINITIALISED => {
+            ModuleMode::Uninitialized => {
                 self.led_yellow.turn_off();
                 self.led_green.turn_on();
             },
-            VlcbModeParams::SETUP => {
+            ModuleMode::InSetup => {
                 self.led_yellow.set_effect(LedEffect::new(blink::<C>(config::SETUP_MODE_BLINK_RATE_HZ)));
                 self.led_green.turn_off();
             },

@@ -1,23 +1,37 @@
 use vlcb_core::fast_clock::{FastClockMonth, FastClockWeekday};
-use vlcb_defs::CbusOpCodes;
+use vlcb_defs::OpCode;
 
 use super::{construct, PacketPayload};
+
+/// General Acknowledgement
+///
+/// Positive response to query / request performed or report of availability on-line.
+pub fn ack() -> PacketPayload {
+    construct::no_data(OpCode::GeneralAck)
+}
+
+/// General No Ack
+///
+/// Negative response to query / request denied.
+pub fn nack() -> PacketPayload {
+    construct::no_data(OpCode::GeneralNack)
+}
 
 /// Bus Halt
 ///
 /// Commonly broadcasted to all nodes to indicate CBUS is not available and no
-/// further packets should be sent until a [`CbusOpCodes::BON`] or
-/// [`CbusOpCodes::ARST`] is received.
+/// further packets should be sent until a [`OpCode::BON`] or
+/// [`OpCode::ARST`] is received.
 pub fn bus_halt() -> PacketPayload {
-    construct::no_data(CbusOpCodes::HLT)
+    construct::no_data(OpCode::BusHalt)
 }
 
 /// Bus on
 ///
 /// Commonly broadcasted to all nodes to indicate CBUS is available following a
-/// [`CbusOpCodes::HLT`].
+/// [`OpCode::HLT`].
 pub fn bus_resume() -> PacketPayload {
-    construct::no_data(CbusOpCodes::BON)
+    construct::no_data(OpCode::BusResume)
 }
 
 /// Fast Clock
@@ -47,42 +61,5 @@ pub fn fast_clock(
 
     wdmon |= (month as u8) << 3;
 
-    construct::six_bytes(CbusOpCodes::FCLK, mins, hours, wdmon, accel_coefficient, month_day, temperature as u8)
-}
-
-pub mod response {
-    use vlcb_defs::CbusOpCodes;
-
-    use super::super::{construct, PacketPayload};
-
-    /// General Acknowledgement
-    ///
-    /// Positive response to query / request performed or report of availability on-line.
-    pub fn ack() -> PacketPayload {
-        construct::no_data(CbusOpCodes::ACK)
-    }
-
-    /// General No Ack
-    ///
-    /// Negative response to query / request denied.
-    pub fn nack() -> PacketPayload {
-        construct::no_data(CbusOpCodes::NAK)
-    }
-}
-
-
-
-/// Helper opcodes that can be used during debugging in development environments.
-/// These should never be used in production builds!
-pub mod debug {
-    use vlcb_defs::CbusOpCodes;
-    use super::{construct, PacketPayload};
-
-    /// Debug with one data byte
-    ///
-    /// The byte is a freeform status value for debugging during CBUS module development.
-    /// Not used during normal operation
-    pub fn send_debug(data: u8) -> PacketPayload {
-        construct::one_byte(CbusOpCodes::DBG1, data)
-    }
+    construct::six_bytes(OpCode::FastClock, mins, hours, wdmon, accel_coefficient, month_day, temperature as u8)
 }

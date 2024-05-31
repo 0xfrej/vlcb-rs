@@ -1,5 +1,5 @@
 use super::{Error, Result};
-use vlcb_defs::CbusOpCodes;
+use vlcb_defs::OpCode;
 use core::fmt;
 
 /// VLCB sub-protocol.
@@ -13,8 +13,8 @@ pub enum Protocol {
     // Every other opcode that is not tied to a specific protocol
     Module,
 
-    /// Long message protocol
-    LongMsg,
+    /// Stream protocol
+    Stream,
 }
 
 //TODO: we need to properly test this and check for data_len constraints
@@ -154,8 +154,8 @@ impl<T: AsRef<[u8]>> Packet<T> {
 
     /// Return the next header protocol type
     pub fn next_header(&self) -> Protocol {
-        match CbusOpCodes::from(self.opcode()) {
-            CbusOpCodes::DTXC => Protocol::LongMsg,
+        match OpCode::try_from(self.opcode()).unwrap() {
+            OpCode::StreamPacket => Protocol::Stream,
             _ => Protocol::Module,
         }
     }
@@ -204,12 +204,12 @@ impl<T: AsRef<[u8]>> AsRef<[u8]> for Packet<T> {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Repr {
     pub data_len: u8,
-    pub opcode: CbusOpCodes,
+    pub opcode: OpCode,
     pub next_header: Protocol,
 }
 
 impl Repr {
-    pub fn new(opcode: CbusOpCodes, data_len: u8, next_header: Protocol) -> Self {
+    pub fn new(opcode: OpCode, data_len: u8, next_header: Protocol) -> Self {
         Self { opcode, data_len, next_header }
     }
 
@@ -217,7 +217,7 @@ impl Repr {
     pub fn parse<T: AsRef<[u8]> + ?Sized>(packet: &Packet<&T>) -> Result<Repr> {
         Ok(Repr {
             data_len: packet.payload_len(),
-            opcode: CbusOpCodes::try_from(packet.opcode()).unwrap(),
+            opcode: OpCode::try_from(packet.opcode()).unwrap(),
             next_header: packet.next_header(),
         })
     }
